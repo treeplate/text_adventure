@@ -7,8 +7,16 @@ class WordIterator {
       buf.write(characters[index]);
       index++;
     }
-    index++;
+    if (!complete) index++;
     return buf.toString();
+  }
+
+  void ungetWord() {
+    index--;
+    while (index >= 0 && characters[index] != ' ') {
+      index--;
+    }
+    index++;
   }
 
   String getRemainder() {
@@ -29,7 +37,7 @@ class WordIterator {
           index -= wordBuf.toString().length;
           return buf.toString();
         }
-        if (!buf.toString().endsWith(' ')) {
+        if (!buf.toString().endsWith(' ') && buf.isNotEmpty) {
           buf.write(' ');
         }
         buf.write(wordBuf.toString());

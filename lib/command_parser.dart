@@ -4,8 +4,8 @@ import 'package:text_adventure/word_iterator.dart';
 
 import 'text_adventure.dart';
 
-Command? parseCommand(
-    Person person, String command, void Function(Object) print) {
+Command? parseCommand(List<Atom> allAtoms, Person person, String command,
+    void Function(Object) print) {
   WordIterator iterator = WordIterator(command);
   switch (iterator.getWord()) {
     case 'l':
@@ -19,19 +19,11 @@ Command? parseCommand(
               return null;
             }
             String targetName = iterator.getRemainder();
-            Atom? target = findAtom(targetName, print, person);
+            Atom? target = findAtom(targetName, print, person.accessibleAtoms);
             if (target == null) return null;
             return LookAtCommand(target);
           case '[at':
             print('The square brackets mean "optional"!\n');
-            return null;
-          case 'debug':
-            for (Atom atom in person.accessibleAtoms) {
-              print(atom);
-              print(' (');
-              atom.printPosition(print, false);
-              print(')\n');
-            }
             return null;
           default:
             print('"look" syntax: look/l [at <something>]\n');
@@ -48,7 +40,7 @@ Command? parseCommand(
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person);
+      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
       if (target == null) return null;
       return TakeCommand(target);
     case 'drop':
@@ -57,7 +49,7 @@ Command? parseCommand(
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person);
+      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
       if (target == null) return null;
       return DropCommand(target);
     case 'climb':
@@ -66,7 +58,7 @@ Command? parseCommand(
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person);
+      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
       if (target == null) return null;
       return ClimbCommand(target);
     case 'enter':
@@ -75,7 +67,7 @@ Command? parseCommand(
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person);
+      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
       if (target == null) return null;
       return EnterCommand(target);
     case 'open':
@@ -86,7 +78,7 @@ Command? parseCommand(
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person);
+      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
       if (target == null) return null;
       return OpenCommand(target);
     case 'close':
@@ -95,18 +87,18 @@ Command? parseCommand(
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person);
+      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
       if (target == null) return null;
       return CloseCommand(target);
     case 'put':
     case 'p':
-    case 'p/put':
+    case 'put/p':
       if (iterator.complete) {
         print('"put" syntax: put/p <something> in/on <something>\n');
         return null;
       }
       String targetName = iterator.getUntilKeywords(['in', 'on', 'in/on']);
-      Atom? src = findAtom(targetName, print, person);
+      Atom? src = findAtom(targetName, print, person.accessibleAtoms);
       if (src == null) return null;
       bool on; // as opposed to in
       switch (iterator.getWord()) {
@@ -122,7 +114,7 @@ Command? parseCommand(
           return null;
       }
       targetName = iterator.getRemainder();
-      Atom? dest = findAtom(targetName, print, person);
+      Atom? dest = findAtom(targetName, print, person.accessibleAtoms);
       if (dest == null) return null;
 
       if (on) {
@@ -145,20 +137,52 @@ Command? parseCommand(
     case 'clear':
       print('\x1b[2J');
       return null;
+    case 'find':
+      bool debug = iterator.getWord() == 'debug';
+      if (!debug) iterator.ungetWord();
+      String name = iterator.getRemainder();
+      Atom? atom =
+          findAtom(name, print, debug ? allAtoms : person.accessibleAtoms);
+      if (atom == null) {
+        return null;
+      }
+      if (atom is SingletonAllAtom) {
+        if (debug) {
+          for (Atom atom2 in allAtoms) {
+            print('$atom2: ');
+            atom2.printPosition(print, false);
+            print('\n');
+          }
+        } else {
+          for (Atom atom2 in person.accessibleAtoms) {
+            print('$atom2: ');
+            atom2.printPosition(print, false);
+            print('\n');
+          }
+        }
+        return null;
+      }
+      atom.printPosition(print, false);
+      print('\n');
+      return null;
     default:
       print(
-          'Valid commands:\nlook\nl\ntake\nt\ndrop\nclimb\nenter\ninventory\ni\nbug\nclose\nopen\no\nclear\n');
+          'Valid commands:\nlook\ntake\ndrop\nclimb\nenter\ninventory\nbug\nclose\nopen\nclear\nput\n');
       return null;
   }
 }
 
-Atom? findAtom(String targetName, void Function(Object) print, Person person) {
+Atom? findAtom(String targetName, void Function(Object) print,
+    List<Atom> accessibleAtoms) {
   if (targetName == '<something>') {
     print('<something> was a placeholder for a thing or location!\n');
     return null;
   }
+  if (targetName == 'all') {
+    return SingletonAllAtom();
+  }
   Atom? target;
-  for (Atom atom in person.accessibleAtoms) {
+  for (Atom atom in accessibleAtoms) {
     if (atom.stringRepresentsThis(targetName)) {
       if (target == null) {
         target = atom;
