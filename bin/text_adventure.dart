@@ -43,7 +43,7 @@ void main(List<String> arguments) async {
       RegExp(caseSensitive: false, '^(back)?pack\$'),
     )
   ];
-  atoms.add((atoms.last as Thing)._parent);
+  atoms.add((atoms.last as Thing)._parent!);
 
   while (true) {
     stdout.write('> ');

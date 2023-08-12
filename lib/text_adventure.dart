@@ -107,7 +107,7 @@ class SingletonAllAtom extends Atom {
 }
 
 abstract class Thing extends Atom {
-  Atom _parent;
+  Atom? _parent;
   RelativePosition _position;
   bool get hasSurface;
   // Whether you can put things in this thing
@@ -118,16 +118,16 @@ abstract class Thing extends Atom {
   void printPosition(void Function(Object) print, bool addComma) {
     if (addComma) print(', ');
     print('${positionToString(_position)} $_parent');
-    _parent.printPosition(print, true);
+    _parent!.printPosition(print, true);
   }
 
   @override
   Location findLocation() {
-    return _parent.findLocation();
+    return _parent!.findLocation();
   }
 
   Thing._(this._parent, this._position) {
-    _parent._addThing(this);
+    _parent?._addThing(this);
   }
 }
 
@@ -154,10 +154,10 @@ class Ground extends Thing {
 
   @override
   List<Atom> get accessibleAtoms =>
-      [this, _parent, ...accessibleAtomsTowardsLeaves];
+      [this, _parent!, ...accessibleAtomsTowardsLeaves];
 
   @override
-  List<Atom> get accessibleAtomsTowardsRoot => [_parent];
+  List<Atom> get accessibleAtomsTowardsRoot => [_parent!];
 
   @override
   List<Atom> get accessibleAtomsTowardsLeaves => _accessibleChildren
@@ -215,6 +215,7 @@ class Container extends ThingWithInventory {
   bool _open = false;
   @override
   bool get open => _open;
+  bool get openable => true;
 
   @override
   void describe(void Function(Object) print) {
@@ -239,9 +240,9 @@ class Container extends ThingWithInventory {
 
   @override
   List<Atom> get accessibleAtomsTowardsRoot => [
-        _parent,
-        ..._parent.accessibleAtomsTowardsRoot,
-        ..._parent._accessibleChildren
+        _parent!,
+        ..._parent!.accessibleAtomsTowardsRoot,
+        ..._parent!._accessibleChildren
             .where((element) => element != this)
             .expand((e) => [e, ...e.accessibleAtomsTowardsLeaves]),
       ];
@@ -390,7 +391,7 @@ class Person extends ThingWithInventory {
         print('(');
         printPosition(print, false);
         print(')\n');
-        _parent.describe(print);
+        _parent!.describe(print);
       case LookAtCommand(target: Atom target):
         if (target is SingletonAllAtom) {
           for (Atom atom in accessibleAtoms) {
@@ -409,8 +410,8 @@ class Person extends ThingWithInventory {
             print('$atom:\n');
             handleCommand(TakeCommand(atom), print);
           }
-        } else if (target is Location) {
-          print('You cannot take a location!\n');
+        } else if (target is! Thing) {
+          print('You cannot take a non-thing!');
         } else if (target.accessibleAtomsTowardsLeaves.contains(this) ||
             target == this) {
           print('You cannot take something if it would cause recursion!\n');
@@ -438,10 +439,9 @@ class Person extends ThingWithInventory {
             print('You put it on your back.\n');
             _backpack = target;
           } else {
-            _inventory.add(target as Thing);
+            _inventory.add(target);
           }
-          if (target is! Thing) return;
-          target._parent._removeThing(target);
+          target._parent?._removeThing(target);
           target._parent = this;
           if (target is Backpack) {
             target._position = RelativePosition.onParent;
@@ -455,7 +455,7 @@ class Person extends ThingWithInventory {
                   'You are already holding something, and $target is already on your back!\n');
             } else {
               _backpack = null;
-              _inventory.add(target as Thing);
+              _inventory.add(target);
               target._position = RelativePosition.heldByParent;
             }
           } else if (_backpack!._inventory.length >= _backpack!.capacity) {
@@ -463,15 +463,15 @@ class Person extends ThingWithInventory {
               print(
                   'You are already holding something, and your backpack is full!\n');
             } else {
-              _inventory.add(target as Thing);
-              target._parent._removeThing(target);
+              _inventory.add(target);
+              target._parent?._removeThing(target);
               target._parent = this;
               target._position = RelativePosition.heldByParent;
             }
           } else {
             _backpack!._open = true;
-            _backpack!._inventory.add(target as Thing);
-            target._parent._removeThing(target);
+            _backpack!._inventory.add(target);
+            target._parent?._removeThing(target);
             target._parent = _backpack!;
             target._position = RelativePosition.inParent;
           }
@@ -484,15 +484,15 @@ class Person extends ThingWithInventory {
             print('$atom:\n');
             handleCommand(DropCommand(atom), print);
           }
-        } else if (target is Location) {
-          print('You cannot drop a location!\n');
+        } else if (target is! Thing) {
+          print('You cannot drop a non-thing!\n');
         } else if (!_inventory.contains(target) &&
             !(_backpack?._inventory.contains(target) ?? false) &&
             _backpack != target) {
           print('You are not holding $target!\n');
         } else {
           if (_inventory.contains(target)) {
-            _inventory.remove(target as Thing);
+            _inventory.remove(target);
             target._parent = _parent;
             target._position = _position;
           } else if (target == _backpack) {
@@ -501,21 +501,21 @@ class Person extends ThingWithInventory {
             target._position = _position;
           } else {
             _backpack!._open = true;
-            _backpack!._inventory.remove(target as Thing);
+            _backpack!._inventory.remove(target);
             target._parent = _parent;
             target._position = _position;
           }
-          _parent._addThing(target as Thing);
+          _parent?._addThing(target);
         }
       case ClimbCommand(target: Atom target):
         if (target is SingletonAllAtom) {
           print('You cannot climb multiple things at once!\n');
-        } else if (target is Location) {
-          print('You cannot climb a location!\n');
+        } else if (target is! Thing) {
+          print('You cannot climb a non-thing!\n');
         } else if (accessibleAtomsTowardsLeaves.contains(target) ||
             target == this) {
           print('You cannot climb something if it would cause recursion!\n');
-        } else if (target is Thing && !target.hasSurface) {
+        } else if (!target.hasSurface) {
           print('You cannot climb $target, it has no surface!\n');
         } else {
           _moveThing(this, target, RelativePosition.onParent);
@@ -524,10 +524,8 @@ class Person extends ThingWithInventory {
         if (target is SingletonAllAtom) {
           print('You cannot enter multiple things at once!\n');
         } else if (target is Location) {
-          _parent._removeThing(this);
-          _parent = target.ground;
-          _position = RelativePosition.onParent;
-          _parent._addThing(this);
+          // you don't want to end up directly in the location, so this puts you on its ground
+          handleCommand(ClimbCommand(target.ground), print);
         } else if (accessibleAtomsTowardsLeaves.contains(target)) {
           print('You cannot enter something if it would cause recursion!\n');
         } else if (target is Thing && !target.hasInterior) {
@@ -535,10 +533,10 @@ class Person extends ThingWithInventory {
         } else if (target is Thing && !target.open) {
           print('You cannot enter $target, it\'s closed!\n');
         } else {
-          _parent._removeThing(this);
+          _parent?._removeThing(this);
           _parent = target;
           _position = RelativePosition.inParent;
-          _parent._addThing(this);
+          _parent?._addThing(this);
         }
       case CloseCommand(target: Atom target):
         if (target is SingletonAllAtom) {
@@ -563,6 +561,8 @@ class Person extends ThingWithInventory {
           print('You cannot open something that is not a container!\n');
         } else if (target._open) {
           print('You cannot open $target, it is already open!\n');
+        } else if (!target.openable) {
+          print('You cannot open $target!\n');
         } else {
           target._open = true;
         }
@@ -590,7 +590,7 @@ class Person extends ThingWithInventory {
         } else if (!_inventory.contains(src) && src is! SingletonAllAtom) {
           // do nothing, the take above printed the error
         } else if (dest is! Thing) {
-          print('You cannot put something on a location!\n');
+          print('You cannot put something on a non-thing!\n');
         } else if (!dest.hasSurface) {
           print('$dest does not have a surface!\n');
         } else if (src.accessibleAtomsTowardsLeaves.contains(dest) ||
@@ -664,9 +664,9 @@ class Person extends ThingWithInventory {
 
   @override
   List<Atom> get accessibleAtomsTowardsRoot => [
-        _parent,
-        ..._parent.accessibleAtomsTowardsRoot,
-        ..._parent._accessibleChildren
+        _parent!,
+        ..._parent!.accessibleAtomsTowardsRoot,
+        ..._parent!._accessibleChildren
             .where((element) => element != this)
             .expand((e) => [e, ...e.accessibleAtomsTowardsLeaves]),
       ];
@@ -712,11 +712,10 @@ class Person extends ThingWithInventory {
   bool get open => true;
 }
 
-class Location extends Atom {
-  Location._(this.name, this.nameRegex, this.description);
+class Location extends Container {
+  Location._(String name, RegExp nameRegex, this.description)
+      : super._(null, RelativePosition.inParent, 100, false, name, nameRegex);
 
-  final String name;
-  final RegExp nameRegex;
   final String description;
 
   @override
@@ -756,11 +755,6 @@ class Location extends Atom {
   List<Atom> get accessibleAtomsTowardsRoot => [];
 
   @override
-  bool stringRepresentsThis(String str) {
-    return nameRegex.hasMatch(str);
-  }
-
-  @override
   void _addThing(Thing thing) {
     if (thing is Ground) {
       // this must be our [ground] field
@@ -773,11 +767,17 @@ class Location extends Atom {
   void _removeThing(Thing thing) {
     assert(false);
   }
+
+  @override
+  bool get open => false;
+
+  @override
+  bool get openable => false;
 }
 
 void _moveThing(
     Thing thing, Atom targetParent, RelativePosition targetPosition) {
-  thing._parent._removeThing(thing);
+  thing._parent?._removeThing(thing);
   thing._parent = targetParent;
   thing._position = targetPosition;
   targetParent._addThing(thing);
