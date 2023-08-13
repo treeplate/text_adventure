@@ -7,10 +7,11 @@ void main(List<String> arguments) async {
   Location loc = Location._(
       'the bedroom',
       RegExp(caseSensitive: false, '^(the )?(bed)?room\$'),
-      'This is an empty room.');
+      'This is a mostly boring room.');
   Person player = Person._(loc.ground, RelativePosition.onParent, 'Charles');
-  List<Atom> atoms = [
+  Set<Atom> atoms = {
     loc,
+    loc.ground,
     player,
     Container._(
       loc.ground,
@@ -42,13 +43,33 @@ void main(List<String> arguments) async {
       'backpack',
       RegExp(caseSensitive: false, '^(back)?pack\$'),
     )
-  ];
+  };
   atoms.add((atoms.last as Thing)._parent!);
-
+  List<String>? commands;
+  print('hi');
+  if (arguments.isNotEmpty) {
+    if (arguments[0] == '-if') {
+      commands = File(arguments[1]).readAsLinesSync();
+    } else {
+      throw UnsupportedError('argument ${arguments[0]}');
+    }
+  }
+  int i = 0;
   while (true) {
     stdout.write('> ');
-    String rawCommand = stdin.readLineSync()!;
+    String rawCommand;
+    if (commands == null) {
+      rawCommand = stdin.readLineSync()!;
+    } else {
+      if (commands.length > i) {
+        rawCommand = commands[i];
+        print(rawCommand);
+      } else {
+        throw exit(0);
+      }
+    }
     Command? command = parseCommand(atoms, player, rawCommand, stdout.write);
+    i++;
     if (command == null) continue;
     player.handleCommand(command, stdout.write);
   }

@@ -8,7 +8,8 @@
             "name": "text_adventure",
             "request": "launch",
             "type": "dart",
-            "program": "bin/text_adventure.dart"
+            "program": "bin/text_adventure.dart",
+            "args": ["-if", "input.txt"]
         }
     ]
 }

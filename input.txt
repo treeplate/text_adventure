@@ -1,0 +1,3 @@
+open all
+take all
+put all in 3

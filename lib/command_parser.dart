@@ -4,7 +4,7 @@ import 'package:text_adventure/word_iterator.dart';
 
 import 'text_adventure.dart';
 
-Command? parseCommand(List<Atom> allAtoms, Person person, String command,
+Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
     void Function(Object) print) {
   WordIterator iterator = WordIterator(command);
   switch (iterator.getWord()) {
@@ -172,8 +172,8 @@ Command? parseCommand(List<Atom> allAtoms, Person person, String command,
   }
 }
 
-Atom? findAtom(String targetName, void Function(Object) print,
-    List<Atom> accessibleAtoms) {
+Atom? findAtom(
+    String targetName, void Function(Object) print, Set<Atom> accessibleAtoms) {
   if (targetName == '<something>') {
     print('<something> was a placeholder for a thing or location!\n');
     return null;
