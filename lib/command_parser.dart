@@ -5,7 +5,7 @@ import 'package:text_adventure/word_iterator.dart';
 import 'text_adventure.dart';
 
 Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
-    void Function(Object) print) {
+    void Function(Object?) print) {
   WordIterator iterator = WordIterator(command);
   switch (iterator.getWord()) {
     case 'l':
@@ -15,18 +15,64 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
         switch (iterator.getWord()) {
           case 'at':
             if (iterator.complete) {
-              print('"look" syntax: look/l [at <something>]\n');
+              print('"look" syntax: look/l [<direction> / at <something>]\n');
               return null;
             }
             String targetName = iterator.getRemainder();
-            Atom? target = findAtom(targetName, print, person.accessibleAtoms);
+            Atom? target =
+                findAtom(targetName, print, person.accessibleAtoms(), person);
             if (target == null) return null;
             return LookAtCommand(target);
           case '[at':
             print('The square brackets mean "optional"!\n');
             return null;
+          case 'n':
+          case 'north':
+            if (!iterator.complete) {
+              print('"look" syntax: look/l [<direction> / at <something>]\n');
+              return null;
+            }
+            return LookDirCommand(Direction.north);
+          case 'e':
+          case 'east':
+            if (!iterator.complete) {
+              print('"look" syntax: look/l [<direction> / at <something>]\n');
+              return null;
+            }
+            return LookDirCommand(Direction.east);
+          case 'w':
+          case 'west':
+            if (!iterator.complete) {
+              print('"look" syntax: look/l [<direction> / at <something>]\n');
+              return null;
+            }
+            return LookDirCommand(Direction.west);
+          case 's':
+          case 'south':
+            if (!iterator.complete) {
+              print('"look" syntax: look/l [<direction> / at <something>]\n');
+              return null;
+            }
+            return LookDirCommand(Direction.south);
+          case 'u':
+          case 'up':
+            if (!iterator.complete) {
+              print('"look" syntax: look/l [<direction> / at <something>]\n');
+              return null;
+            }
+            return LookDirCommand(Direction.up);
+          case 'd':
+          case 'down':
+            if (!iterator.complete) {
+              print('"look" syntax: look/l [<direction> / at <something>]\n');
+              return null;
+            }
+            return LookDirCommand(Direction.down);
+          case '<direction>':
+            print('<direction> was a placeholder!');
+            return null;
           default:
-            print('"look" syntax: look/l [at <something>]\n');
+            print('"look" syntax: look/l [<direction> / at <something>]\n');
             return null;
         }
       } else {
@@ -40,7 +86,8 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
+      Atom? target =
+          findAtom(targetName, print, person.accessibleAtoms(), person);
       if (target == null) return null;
       return TakeCommand(target);
     case 'drop':
@@ -49,7 +96,8 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
+      Atom? target =
+          findAtom(targetName, print, person.accessibleAtoms(), person);
       if (target == null) return null;
       return DropCommand(target);
     case 'climb':
@@ -58,7 +106,8 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
+      Atom? target =
+          findAtom(targetName, print, person.accessibleAtoms(), person);
       if (target == null) return null;
       return ClimbCommand(target);
     case 'enter':
@@ -67,7 +116,8 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
+      Atom? target =
+          findAtom(targetName, print, person.accessibleAtoms(), person);
       if (target == null) return null;
       return EnterCommand(target);
     case 'open':
@@ -78,7 +128,8 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
+      Atom? target =
+          findAtom(targetName, print, person.accessibleAtoms(), person);
       if (target == null) return null;
       return OpenCommand(target);
     case 'close':
@@ -87,7 +138,8 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
         return null;
       }
       String targetName = iterator.getRemainder();
-      Atom? target = findAtom(targetName, print, person.accessibleAtoms);
+      Atom? target =
+          findAtom(targetName, print, person.accessibleAtoms(), person);
       if (target == null) return null;
       return CloseCommand(target);
     case 'put':
@@ -98,7 +150,7 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
         return null;
       }
       String targetName = iterator.getUntilKeywords(['in', 'on', 'in/on']);
-      Atom? src = findAtom(targetName, print, person.accessibleAtoms);
+      Atom? src = findAtom(targetName, print, person.accessibleAtoms(), person);
       if (src == null) return null;
       bool on; // as opposed to in
       switch (iterator.getWord()) {
@@ -114,7 +166,8 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
           return null;
       }
       targetName = iterator.getRemainder();
-      Atom? dest = findAtom(targetName, print, person.accessibleAtoms);
+      Atom? dest =
+          findAtom(targetName, print, person.accessibleAtoms(), person);
       if (dest == null) return null;
 
       if (on) {
@@ -141,45 +194,71 @@ Command? parseCommand(Set<Atom> allAtoms, Person person, String command,
       bool debug = iterator.getWord() == 'debug';
       if (!debug) iterator.ungetWord();
       String name = iterator.getRemainder();
-      Atom? atom =
-          findAtom(name, print, debug ? allAtoms : person.accessibleAtoms);
+      Atom? atom = findAtom(
+          name, print, debug ? allAtoms : person.accessibleAtoms(), person);
       if (atom == null) {
         return null;
       }
       if (atom is SingletonAllAtom) {
         if (debug) {
           for (Atom atom2 in allAtoms) {
-            print('$atom2: ');
-            atom2.printPosition(print, false);
+            if (atom2 is Surface) continue;
+            print('${atom2.toStringFromPerspective(person)}: ');
+            atom2.printPosition(print, false, person);
             print('\n');
           }
         } else {
-          for (Atom atom2 in person.accessibleAtoms) {
-            print('$atom2: ');
-            atom2.printPosition(print, false);
+          for (Atom atom2 in person.accessibleAtoms()) {
+            if (atom2 is Surface) continue;
+            print('${atom2.toStringFromPerspective(person)}: ');
+            atom2.printPosition(print, false, person);
+
             print('\n');
           }
         }
         return null;
       }
-      atom.printPosition(print, false);
+      if (atom is Ground) {
+        if (person.rootT<Container>().ground == atom) {
+          atom.findSurface(person, print);
+        } else {
+          atom.findSurface(person, print);
+        }
+      } else {
+        atom.printPosition(print, false, person);
+      }
       print('\n');
       return null;
+    case 'e':
+    case 'east':
+      return EastCommand();
+    case 'w':
+    case 'west':
+      return WestCommand();
     default:
       print(
-          'Valid commands:\nlook\ntake\ndrop\nclimb\nenter\ninventory\nbug\nclose\nopen\nclear\nput\n');
+          'Valid commands:\nlook\ntake\ndrop\nclimb\nenter\ninventory\nbug\nclose\nopen\nclear\nput\neast\nwest\n');
       return null;
   }
 }
 
-Atom? findAtom(
-    String targetName, void Function(Object) print, Set<Atom> accessibleAtoms) {
-  if (targetName == '<something>') {
-    print('<something> was a placeholder for a thing or location!\n');
+Atom? findAtom(String targetName, void Function(Object?) print,
+    Set<Atom> accessibleAtoms, Person person) {
+  if (targetName.toLowerCase() == '<something>') {
+    print('<something> was a placeholder!\n');
     return null;
   }
-  if (targetName == 'all') {
+  if (targetName.toLowerCase() == 'all') {
     return SingletonAllAtom();
+  }
+  if (targetName.toLowerCase() == 'ground' ||
+      targetName.toLowerCase() == 'the ground') {
+    return person.rootT<Container>().ground;
+  }
+
+  if (targetName.toLowerCase() == 'ceiling' ||
+      targetName.toLowerCase() == 'the ceiling') {
+    return person.rootT<Container>().ceiling;
   }
   Atom? target;
   for (Atom atom in accessibleAtoms) {
@@ -188,7 +267,7 @@ Atom? findAtom(
         target = atom;
       } else {
         print(
-            '"$targetName" is not specific enough (it matches $atom and $target).\n');
+            '"$targetName" is not specific enough (it matches ${atom.toStringFromPerspective(person)} and ${target.toStringFromPerspective(person)}).\n');
         return null;
       }
     }

@@ -13,6 +13,7 @@ class WordIterator {
 
   void ungetWord() {
     index--;
+    index--;
     while (index >= 0 && characters[index] != ' ') {
       index--;
     }
