@@ -1,5 +1,14 @@
 part of 'text_adventure.dart';
 
+void connectRooms(Thing roomA, Thing roomB, Direction aToBDir, Direction bToADir) {
+  ConnectedSurface aToB = ConnectedSurface._(roomA);
+  ConnectedSurface bToA = ConnectedSurface._(roomB);
+  aToB._otherSide = bToA;
+  bToA._otherSide = aToB;
+  roomA._surfaces[aToBDir] = (aToB, bToA);
+  roomB._surfaces[bToADir] = (bToA, aToB);
+}
+
 Set<Atom> createWorld(void Function(Object?) print) {
   Container loc = Container._(
     null,
@@ -9,6 +18,7 @@ Set<Atom> createWorld(void Function(Object?) print) {
     'the bedroom',
     RegExp(caseSensitive: false, '^(the )?(bed)?room\$'),
     'This is a mostly boring room.',
+    false,
     false,
   );
   Container loc2 = Container._(
@@ -20,10 +30,10 @@ Set<Atom> createWorld(void Function(Object?) print) {
     RegExp(caseSensitive: false, '^(the )?(bed)?room2\$'),
     'This is a mostly boring room.',
     false,
+    false,
     (1, 0, 0),
   );
-  loc._surfaces[Direction.west] = Surface._(loc2, loc);
-  loc2._surfaces[Direction.east] = loc._surfaces[Direction.west]!;
+  connectRooms(loc, loc2, Direction.west, Direction.east);
 
   Person player =
       Person._(loc.ground, RelativePosition.onParent, print, 'Charles');
@@ -38,9 +48,9 @@ Set<Atom> createWorld(void Function(Object?) print) {
       );
   Set<Atom> atoms = {
     loc,
-    ...loc._surfaces.values,
+    ...loc._surfaces.values.expand((e) => [e.$1, e.$2]),
     loc2,
-    ...loc2._surfaces.values,
+    ...loc2._surfaces.values.expand((e) => [e.$1, e.$2]),
     player,
     Container._(
       loc.ground,
@@ -52,7 +62,7 @@ Set<Atom> createWorld(void Function(Object?) print) {
       'This is a box. It has a 1 on it.',
     ),
     Button._(loc.ground, RelativePosition.onParent, print,
-        loc2._surfaces[Direction.east]!),
+        loc2._surfaces[Direction.east]!.$1 as ConnectedSurface),
     Backpack._(
       container.ground,
       RelativePosition.onParent,
